@@ -1,0 +1,55 @@
+﻿Tabla,Columna,Tipo de Dato,Permite NULL,Llave,Por Defecto,Extra,Descripción
+roles,id_rol,INT,NO,PK,None,AUTO_INCREMENT,Identificador único del rol
+roles,nombre_rol,VARCHAR(50),NO,UQ,None,None,"Nombre del rol (Administrador, Veterinario, Propietario)"
+propietarios,id_propietario,INT,NO,PK,None,AUTO_INCREMENT,Identificador único del propietario
+propietarios,nombre,VARCHAR(100),NO,,None,None,Nombre del propietario
+propietarios,apellido,VARCHAR(100),NO,,None,None,Apellido del propietario
+propietarios,telefono,VARCHAR(20),YES,,NULL,None,Número de teléfono de contacto
+propietarios,email,VARCHAR(150),NO,UQ,None,None,Correo electrónico único del propietario
+propietarios,direccion,TEXT,YES,,NULL,None,Dirección de residencia
+veterinarios,id_veterinario,INT,NO,PK,None,AUTO_INCREMENT,Identificador único del veterinario
+veterinarios,nombre,VARCHAR(100),NO,,None,None,Nombre del veterinario
+veterinarios,apellido,VARCHAR(100),NO,,None,None,Apellido del veterinario
+veterinarios,especialidad,VARCHAR(100),YES,,NULL,None,Especialidad médica del veterinario
+veterinarios,telefono,VARCHAR(20),YES,,NULL,None,Teléfono de contacto
+veterinarios,email,VARCHAR(150),NO,UQ,None,None,Correo electrónico profesional
+usuarios,id_usuario,INT,NO,PK,None,AUTO_INCREMENT,Identificador único del usuario
+usuarios,email,VARCHAR(150),NO,UQ,None,None,Correo electrónico de inicio de sesión
+usuarios,password,VARCHAR(255),NO,,None,None,Contraseña encriptada (Hash)
+usuarios,id_rol,INT,NO,FK,None,None,Referencia al rol (roles.id_rol)
+usuarios,estado,"ENUM('Activo','Inactivo')",NO,,'Activo',None,Estado de la cuenta
+usuarios,id_propietario,INT,YES,FK,NULL,None,Referencia a propietarios.id_propietario
+usuarios,id_veterinario,INT,YES,FK,NULL,None,Referencia a veterinarios.id_veterinario
+usuarios,fecha_creacion,DATETIME,NO,,CURRENT_TIMESTAMP,None,Fecha y hora de registro
+mascotas,id_mascota,INT,NO,PK,None,AUTO_INCREMENT,Identificador único de la mascota
+mascotas,id_propietario,INT,NO,FK,None,None,Referencia al dueño (propietarios.id_propietario)
+mascotas,nombre,VARCHAR(100),NO,,None,None,Nombre de la mascota
+mascotas,especie,VARCHAR(50),NO,,None,None,Especie de la mascota
+mascotas,raza,VARCHAR(50),YES,,NULL,None,Raza de la mascota
+mascotas,sexo,"ENUM('Macho','Hembra')",NO,,None,None,Sexo biológico de la mascota
+mascotas,fecha_nacimiento,DATE,YES,,NULL,None,Fecha de nacimiento
+mascotas,caracteristicas,TEXT,YES,,NULL,None,Rasgos físicos particulares o señas
+servicios,id_servicio,INT,NO,PK,None,AUTO_INCREMENT,Identificador único del servicio
+servicios,nombre_servicio,VARCHAR(100),NO,,None,None,Nombre del servicio
+servicios,descripcion,TEXT,YES,,NULL,None,Descripción detallada del servicio
+servicios,precio,"DECIMAL(10,2)",NO,,None,None,Precio unitario del servicio
+horarios_disponibles,id_horario,INT,NO,PK,None,AUTO_INCREMENT,Identificador único del bloque de horario
+horarios_disponibles,id_veterinario,INT,NO,FK,None,None,Referencia al médico (veterinarios.id_veterinario)
+horarios_disponibles,fecha,DATE,NO,,None,None,Fecha de la disponibilidad
+horarios_disponibles,hora_inicio,TIME,NO,,None,None,Hora de inicio del turno
+horarios_disponibles,hora_fin,TIME,NO,,None,None,Hora de finalización del turno
+horarios_disponibles,estado,"ENUM('Disponible','Reservado','No Disponible')",NO,,'Disponible',None,Disponibilidad del bloque
+citas,id_cita,INT,NO,PK,None,AUTO_INCREMENT,Identificador único de la cita
+citas,id_mascota,INT,NO,FK,None,None,Referencia a la mascota (mascotas.id_mascota)
+citas,id_veterinario,INT,NO,FK,None,None,Referencia al médico (veterinarios.id_veterinario)
+citas,id_servicio,INT,NO,FK,None,None,Referencia al servicio (servicios.id_servicio)
+citas,fecha_hora,DATETIME,NO,,None,None,Fecha y hora de la cita programada
+citas,estado,"ENUM('Programada','Atendida','Cancelada')",NO,,'Programada',None,Estado actual de la cita
+consultas,id_consulta,INT,NO,PK,None,AUTO_INCREMENT,Identificador único de la consulta
+consultas,id_cita,INT,YES,"FK, UQ",NULL,None,Cita origen que generó la consulta
+consultas,id_mascota,INT,NO,FK,None,None,Referencia a la mascota atendida
+consultas,id_veterinario,INT,NO,FK,None,None,Referencia al médico que atendió
+consultas,fecha_consulta,DATETIME,NO,,CURRENT_TIMESTAMP,None,Fecha y hora de atención
+consultas,diagnostico,TEXT,NO,,None,None,Diagnóstico médico emitido
+consultas,observaciones,TEXT,YES,,NULL,None,Notas clínicas adicionales
+consultas,tratamiento,TEXT,YES,,NULL,None,Medicamentos y pasos a seguir prescritos
