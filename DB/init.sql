@@ -1,141 +1,140 @@
+-- =============================================================================
+-- BASE DE DATOS: CLINICA VETERINARIA (MySQL / MariaDB)
+-- BASADA EN REQUERIMIENTOS FUNCIONALES (RF01 - RF12)
+-- =============================================================================
+
 CREATE DATABASE IF NOT EXISTS clinica_veterinaria;
 USE clinica_veterinaria;
 
--- 1. Tabla de Roles
-CREATE TABLE IF NOT EXISTS roles (
-    id_rol INT AUTO_INCREMENT PRIMARY KEY,
-    nombre_rol VARCHAR(50) UNIQUE NOT NULL
-);
-
-INSERT INTO roles (id_rol, nombre_rol) VALUES 
-(1, 'Administrador'),
-(2, 'Veterinario'),
-(3, 'Propietario')
-ON DUPLICATE KEY UPDATE nombre_rol=VALUES(nombre_rol);
-
--- 2. Tabla de Propietarios
-CREATE TABLE IF NOT EXISTS propietarios (
-    id_propietario INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    apellido VARCHAR(100) NOT NULL,
-    telefono VARCHAR(20),
-    email VARCHAR(150) UNIQUE NOT NULL,
-    direccion TEXT
-);
-
--- 3. Tabla de Veterinarios
-CREATE TABLE IF NOT EXISTS veterinarios (
-    id_veterinario INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    apellido VARCHAR(100) NOT NULL,
-    especialidad VARCHAR(100),
-    telefono VARCHAR(20),
-    email VARCHAR(150) UNIQUE NOT NULL
-);
-
--- 4. Tabla de Usuarios
-CREATE TABLE IF NOT EXISTS usuarios (
+-- 1. TABLA: USUARIOS (RF01 - Iniciar Sesión)
+CREATE TABLE usuarios (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(150) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    id_rol INT NOT NULL,
-    estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
-    id_propietario INT DEFAULT NULL,
-    id_veterinario INT DEFAULT NULL,
-    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_rol) REFERENCES roles(id_rol),
-    FOREIGN KEY (id_propietario) REFERENCES propietarios(id_propietario) ON DELETE CASCADE,
-    FOREIGN KEY (id_veterinario) REFERENCES veterinarios(id_veterinario) ON DELETE CASCADE
-);
+    nombre VARCHAR(100) NOT NULL,
+    correo VARCHAR(150) NOT NULL UNIQUE,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
+    contrasena VARCHAR(255) NOT NULL, -- Se debe almacenar el hash encriptado (RNF03)
+    rol ENUM('administrador', 'veterinario') NOT NULL,
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
 
--- 5. Tabla de Mascotas
-CREATE TABLE IF NOT EXISTS mascotas (
+-- 2. TABLA: VETERINARIOS (RF09 - Gestionar Veterinarios)
+CREATE TABLE veterinarios (
+    id_veterinario INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL UNIQUE,
+    especialidad VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    licencia_medica VARCHAR(50),
+    CONSTRAINT fk_veterinario_usuario FOREIGN KEY (id_usuario) 
+        REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 3. TABLA: PROPIETARIOS (RF02, RF12 - Registrar y Gestionar Propietarios)
+CREATE TABLE propietarios (
+    id_propietario INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_completo VARCHAR(150) NOT NULL,
+    direccion TEXT NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    correo VARCHAR(150) UNIQUE,
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 4. TABLA: MASCOTAS (RF03, RF12 - Registrar y Gestionar Mascotas)
+CREATE TABLE mascotas (
     id_mascota INT AUTO_INCREMENT PRIMARY KEY,
     id_propietario INT NOT NULL,
     nombre VARCHAR(100) NOT NULL,
     especie VARCHAR(50) NOT NULL,
-    raza VARCHAR(50),
+    raza VARCHAR(50) NOT NULL,
     sexo ENUM('Macho', 'Hembra') NOT NULL,
     fecha_nacimiento DATE,
-    caracteristicas TEXT,
-    FOREIGN KEY (id_propietario) REFERENCES propietarios(id_propietario) ON DELETE CASCADE
-);
+    caracteristicas_relevantes TEXT,
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_mascota_propietario FOREIGN KEY (id_propietario) 
+        REFERENCES propietarios(id_propietario) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
--- 6. Tabla de Servicios
-CREATE TABLE IF NOT EXISTS servicios (
+-- 5. TABLA: SERVICIOS (RF10 - Gestionar Servicios)
+CREATE TABLE servicios (
     id_servicio INT AUTO_INCREMENT PRIMARY KEY,
-    nombre_servicio VARCHAR(100) NOT NULL,
+    nombre_servicio VARCHAR(100) NOT NULL UNIQUE,
     descripcion TEXT,
-    precio DECIMAL(10,2) NOT NULL
-);
+    duracion_estimada_min INT NOT NULL,
+    activo BOOLEAN DEFAULT TRUE
+) ENGINE=InnoDB;
 
--- 7. Tabla de Horarios Disponibles
-CREATE TABLE IF NOT EXISTS horarios_disponibles (
+-- 6. TABLA: HORARIOS DE ATENCIÓN (RF11 - Gestionar Horarios de Atención)
+CREATE TABLE horarios_atencion (
     id_horario INT AUTO_INCREMENT PRIMARY KEY,
     id_veterinario INT NOT NULL,
-    fecha DATE NOT NULL,
+    dia_semana INT NOT NULL CHECK (dia_semana BETWEEN 1 AND 7), -- 1: Lunes, 7: Domingo
     hora_inicio TIME NOT NULL,
     hora_fin TIME NOT NULL,
-    estado ENUM('Disponible', 'Reservado', 'No Disponible') DEFAULT 'Disponible',
-    FOREIGN KEY (id_veterinario) REFERENCES veterinarios(id_veterinario) ON DELETE CASCADE
-);
+    CONSTRAINT fk_horario_veterinario FOREIGN KEY (id_veterinario) 
+        REFERENCES veterinarios(id_veterinario) ON DELETE CASCADE,
+    CONSTRAINT chk_rango_horas CHECK (hora_inicio < hora_fin)
+) ENGINE=InnoDB;
 
--- 8. Tabla de Citas
-CREATE TABLE IF NOT EXISTS citas (
+-- 7. TABLA: CITAS (RF04, RF05, RF08 - Agendar, Cancelar y Consultar Citas)
+CREATE TABLE citas (
     id_cita INT AUTO_INCREMENT PRIMARY KEY,
     id_mascota INT NOT NULL,
     id_veterinario INT NOT NULL,
     id_servicio INT NOT NULL,
-    fecha_hora DATETIME NOT NULL,
+    fecha_cita DATE NOT NULL,
+    hora_cita TIME NOT NULL,
     estado ENUM('Programada', 'Atendida', 'Cancelada') DEFAULT 'Programada',
-    FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE,
-    FOREIGN KEY (id_veterinario) REFERENCES veterinarios(id_veterinario) ON DELETE CASCADE,
-    FOREIGN KEY (id_servicio) REFERENCES servicios(id_servicio) ON DELETE CASCADE
-);
+    motivo_cancelacion TEXT,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cita_mascota FOREIGN KEY (id_mascota) 
+        REFERENCES mascotas(id_mascota) ON DELETE RESTRICT,
+    CONSTRAINT fk_cita_veterinario FOREIGN KEY (id_veterinario) 
+        REFERENCES veterinarios(id_veterinario) ON DELETE RESTRICT,
+    CONSTRAINT fk_cita_servicio FOREIGN KEY (id_servicio) 
+        REFERENCES servicios(id_servicio) ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
--- 9. Tabla de Consultas
-CREATE TABLE IF NOT EXISTS consultas (
+-- 8. TABLA: CONSULTAS VETERINARIAS (RF06, RF07 - Registrar y Consultar Historial Clínico)
+CREATE TABLE consultas_veterinarias (
     id_consulta INT AUTO_INCREMENT PRIMARY KEY,
-    id_cita INT UNIQUE,
+    id_cita INT NOT NULL UNIQUE,
     id_mascota INT NOT NULL,
     id_veterinario INT NOT NULL,
-    fecha_consulta DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_atencion DATETIME DEFAULT CURRENT_TIMESTAMP,
     diagnostico TEXT NOT NULL,
     observaciones TEXT,
-    tratamiento TEXT,
-    FOREIGN KEY (id_cita) REFERENCES citas(id_cita) ON DELETE SET NULL,
-    FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE,
-    FOREIGN KEY (id_veterinario) REFERENCES veterinarios(id_veterinario) ON DELETE CASCADE
-);
+    tratamiento TEXT NOT NULL,
+    servicios_adicionales TEXT,
+    CONSTRAINT fk_consulta_cita FOREIGN KEY (id_cita) 
+        REFERENCES citas(id_cita) ON DELETE RESTRICT,
+    CONSTRAINT fk_consulta_mascota FOREIGN KEY (id_mascota) 
+        REFERENCES mascotas(id_mascota) ON DELETE RESTRICT,
+    CONSTRAINT fk_consulta_veterinario FOREIGN KEY (id_veterinario) 
+        REFERENCES veterinarios(id_veterinario) ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
--- ========================================================
--- INSERCIÓN DE DATOS DE PRUEBA
--- ========================================================
+-- =============================================================================
+-- ÍNDICES DE OPTIMIZACIÓN (RNF02)
+-- =============================================================================
+CREATE INDEX idx_citas_busqueda ON citas(fecha_cita, id_veterinario, estado);
+CREATE INDEX idx_historial_mascota ON consultas_veterinarias(id_mascota, fecha_atencion DESC);
+CREATE INDEX idx_mascota_propietario ON mascotas(id_propietario);
 
-INSERT INTO propietarios (id_propietario, nombre, apellido, telefono, email, direccion) VALUES
-(1, 'Carlos', 'Mendoza', '555-0101', 'carlos.mendoza@email.com', 'Av. Las Flores #123, Ciudad'),
-(2, 'Ana', 'García', '555-0102', 'ana.garcia@email.com', 'Calle Los Olivos #456, Ciudad');
+-- =============================================================================
+-- DATOS INICIALES DE PRUEBA
+-- =============================================================================
+INSERT INTO usuarios (nombre, correo, usuario, contrasena, rol) VALUES 
+('Carlos Administrador', 'admin@veterinaria.com', 'admin', '$2b$10$e8Z9xG...', 'administrador'),
+('Dra. Maria Lopez', 'mlopez@veterinaria.com', 'mlopez', '$2b$10$k1A2bC...', 'veterinario');
 
-INSERT INTO veterinarios (id_veterinario, nombre, apellido, especialidad, telefono, email) VALUES
-(1, 'Dra. María', 'López', 'Cirugía General y Medicina Felina', '555-0201', 'maria.lopez@veterinaria.com'),
-(2, 'Dr. Jorge', 'Sánchez', 'Dermatología y Nutrición Canina', '555-0202', 'jorge.sanchez@veterinaria.com');
+INSERT INTO veterinarios (id_usuario, especialidad, telefono, licencia_medica) VALUES 
+(2, 'Medicina General y Cirugía', '7890-1234', 'VET-2026-88');
 
-INSERT INTO usuarios (email, password, id_rol, estado, id_propietario, id_veterinario) VALUES
-('admin@veterinaria.com', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe11yv.RkR8ZqLw.a4e5I2sK5q8xP3Mde', 1, 'Activo', NULL, NULL),
-('maria.lopez@veterinaria.com', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe11yv.RkR8ZqLw.a4e5I2sK5q8xP3Mde', 2, 'Activo', NULL, 1),
-('carlos.mendoza@email.com', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe11yv.RkR8ZqLw.a4e5I2sK5q8xP3Mde', 3, 'Activo', 1, NULL);
+INSERT INTO servicios (nombre_servicio, descripcion, duracion_estimada_min) VALUES 
+('Consulta General', 'Evaluación médica básica de la mascota', 30),
+('Vacunación', 'Aplicación de esquemas de vacunas', 15),
+('Cirugía Mayor', 'Procedimientos quirúrgicos complejos', 120);
 
-INSERT INTO mascotas (id_mascota, id_propietario, nombre, especie, raza, sexo, fecha_nacimiento, caracteristicas) VALUES
-(1, 1, 'Max', 'Perro', 'Golden Retriever', 'Macho', '2021-05-10', 'Pelaje dorado, mancha blanca en la pata izquierda.'),
-(2, 1, 'Luna', 'Gato', 'Siamés', 'Hembra', '2022-01-15', 'Ojos azules, temperamento tranquilo.');
-
-INSERT INTO servicios (id_servicio, nombre_servicio, descripcion, precio) VALUES
-(1, 'Consulta General', 'Evaluación médica preventiva y diagnóstico general.', 25.00),
-(2, 'Vacunación', 'Aplicación de vacunas del esquema básico.', 20.00);
-
-INSERT INTO citas (id_cita, id_mascota, id_veterinario, id_servicio, fecha_hora, estado) VALUES
-(1, 1, 1, 1, '2026-08-15 09:00:00', 'Atendida'),
-(2, 2, 1, 2, '2026-08-25 08:00:00', 'Programada');
-
-INSERT INTO consultas (id_consulta, id_cita, id_mascota, id_veterinario, fecha_consulta, diagnostico, observaciones, tratamiento) VALUES
-(1, 1, 1, 1, '2026-08-15 09:30:00', 'Chequeo de rutina aceptable.', 'Mascota responde bien a la palpación.', 'Monitoreo preventivo.');
+INSERT INTO horarios_atencion (id_veterinario, dia_semana, hora_inicio, hora_fin) VALUES 
+(1, 1, '08:00:00', '16:00:00'),
+(1, 2, '08:00:00', '16:00:00');
